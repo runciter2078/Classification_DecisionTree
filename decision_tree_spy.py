@@ -85,12 +85,24 @@ def split_dataset(df: pd.DataFrame, train_ratio: float) -> tuple[pd.DataFrame, p
 # Búsqueda de hiperparámetros
 # ----------------------------------------------------------------------
 
-def build_param_distributions() -> dict:
+def build_param_distributions(n_train: int) -> dict:
+    """
+    Espacio de búsqueda de hiperparámetros. 'auto' fue eliminado de
+    max_features en scikit-learn >= 1.3; se sustituye por 'sqrt'/'log2'/None
+    y valores enteros explícitos.
+
+    min_samples_split y min_samples_leaf se escalan según el tamaño del
+    conjunto de entrenamiento: con valores fijos pensados para datasets
+    grandes (hasta 105), en un dataset pequeño casi todas las hojas
+    superan el tamaño del propio dataset y el árbol degenera en un único
+    nodo que predice siempre la clase mayoritaria.
+    """
+    max_leaf = max(5, n_train // 10)
     return {
         "max_depth": list(range(2, 19)) + [None],
         "max_features": ["sqrt", "log2", None],
-        "min_samples_split": sp_randint(2, 105),
-        "min_samples_leaf": sp_randint(1, 105),
+        "min_samples_split": sp_randint(2, max_leaf),
+        "min_samples_leaf": sp_randint(1, max(2, max_leaf // 2)),
         "min_weight_fraction_leaf": [0.0, 0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50],
         "max_leaf_nodes": list(range(2, 21)) + [None],
         "splitter": ["best", "random"],
@@ -126,7 +138,7 @@ def hyperparameter_search(
     search = RandomizedSearchCV(
         clf,
         scoring=scorer,
-        param_distributions=build_param_distributions(),
+        param_distributions=build_param_distributions(len(x_train)),
         n_iter=config.n_iter_search,
         cv=cv,
         n_jobs=-1,
