@@ -126,7 +126,7 @@ pip install yfinance
 python generate_spy_dataset.py --months 60 --output SPYV3.csv
 ```
 
-Note: this is an independently engineered dataset, not a reconstruction of the original SPYV3.csv used when this project was first developed.
+Note: this is an independently engineered dataset, not a reconstruction of the original SPYV3.csv used when this project was first developed — see `generate_spy_dataset.py` for the exact feature definitions.
 
 ## Notes and limitations
 
