@@ -115,10 +115,22 @@ python spy_decision_tree_classifier.py --colab
 
 Optional arguments: `--train-ratio`, `--cv-splits`, `--output-dir` (same defaults as above). Artifacts are saved under `output/` with a `full_` or `selected_` prefix depending on the analysis (e.g. `full_decision_tree.png`, `selected_confusion_matrix.png`), plus a shared `class_distribution.png`.
 
+## Sample dataset
+
+A ready-to-use `SPYV3.csv` (5 years of daily SPY data with engineered technical indicators, generated 2026-08-13) is bundled in this repository so you can run the scripts above without depending on the original proprietary dataset. It was produced with `generate_spy_dataset.py`, which downloads real SPY data via `yfinance` and computes technical/categorical features under the same column names the scripts expect.
+
+To regenerate it with fresh data:
+
+```bash
+pip install yfinance
+python generate_spy_dataset.py --months 60 --output SPYV3.csv
+```
+
+Note: this is an independently engineered dataset, not a reconstruction of the original SPYV3.csv used when this project was first developed.
+
 ## Notes and limitations
 
 - Missing values are not imputed automatically.
-- The dataset is not included in this repository.
 - `n_iter=500` in `decision_tree_spy.py` is a practical default; the original script used 32768, which can take a very long time. Increase `--n-iter` if you have the computational budget.
 
 ## License
