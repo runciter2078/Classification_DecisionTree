@@ -1,80 +1,126 @@
 # SPY Decision Tree Classifier
 
-This project implements a Decision Tree classifier in Python to predict positive entry days for the SPY stock index. The repository contains two main scripts:
+![Python](https://img.shields.io/badge/python-3.9%2B-blue)
+![scikit--learn](https://img.shields.io/badge/scikit--learn-%3E%3D1.3-orange)
+![pandas](https://img.shields.io/badge/pandas-%E2%9C%93-150458)
+![numpy](https://img.shields.io/badge/numpy-%E2%9C%93-013243)
+![License](https://img.shields.io/badge/license-GPL--3.0-green)
 
-1. **decision_tree_spy.py**  
-   This script performs hyperparameter tuning using RandomizedSearchCV, trains a Decision Tree classifier on a dataset loaded from a CSV file (`SPYV3.csv`), evaluates the model using classification reports and confusion matrices, and visualizes the decision tree.
+This project implements a Decision Tree classifier in Python to predict positive entry days for the SPY ETF. The repository contains two complementary scripts.
 
-2. **spy_decision_tree_classifier.py**  
-   Designed for Google Colab, this script allows users to upload a CSV file and performs data exploration, splits the dataset into training and testing sets, trains a Decision Tree classifier, and determines the optimal tree depth using KFold cross-validation. It also includes an analysis with a reduced set of features based on the classifier's feature importance.
+> Disclaimer: this project is for educational and research purposes only. It does not constitute financial or investment advice, and past predictive performance does not guarantee future results.
 
-## Features
+## Repository structure
 
-- **Hyperparameter Tuning:**  
-  Utilizes `RandomizedSearchCV` for exploring various hyperparameters for the Decision Tree classifier.
-  
-- **Model Evaluation:**  
-  Generates classification reports, confusion matrices, and displays feature importances.
+- `decision_tree_spy.py` — Hyperparameter search pipeline: performs a randomized search with time-aware cross-validation, trains the final model directly from the best estimator found, evaluates it, and visualizes the resulting tree. Loads data from a local CSV file (`SPYV3.csv` by default).
+- `spy_decision_tree_classifier.py` — Exploratory pipeline (Colab-friendly): explores the target class distribution, and runs two Decision Tree analyses — one with the full feature set and one with a reduced, pre-selected subset — automatically selecting the optimal tree depth via cross-validation in both cases.
+- `README.md` — This file.
+- `LICENSE` — Project license (GPL-3.0).
 
-- **Decision Tree Visualization:**  
-  Exports and visualizes the decision tree using `pydot`.
+## Methodology
 
-- **Data Exploration:**  
-  Includes data exploration and visualization (e.g., class distribution, histograms) for both full and reduced feature sets.
+- Chronological train/test split (no shuffling), consistent across both scripts.
+- TimeSeriesSplit cross-validation instead of standard K-Fold, both for the randomized hyperparameter search and for the max-depth selection loop, to avoid training on folds that occur after the validation fold.
+- The final model in `decision_tree_spy.py` is taken directly from the search's `best_estimator_`; the original script computed a search but then trained the final tree with separate, hand-picked hyperparameters that were never actually connected to the search results.
+- Optimal `max_depth` in `spy_decision_tree_classifier.py` is chosen automatically as the depth that maximizes average cross-validated accuracy, instead of being hardcoded from a manual reading of the results.
+- `class_weight="balanced"` replaces the original fixed weight (`{0: 3.28}`), which was computed for one specific dataset and would not generalize to a different class distribution.
+- Tree visualization uses `sklearn.tree.plot_tree` (matplotlib) instead of `pydot`/Graphviz, removing an external dependency that is frequently a source of installation issues.
+- Two feature-importance methods are reported: impurity-based (fast, but biased towards high-cardinality features) and permutation-based (computed on held-out data, more reliable).
+- `spy_decision_tree_classifier.py` loads the dataset once, using the union of columns needed for both analyses, instead of uploading and reading the CSV twice.
 
 ## Requirements
 
-- Python 3.6 or higher
-- Required Python packages:
-  - pandas
-  - numpy
-  - scikit-learn
-  - scipy
-  - pydot
-  - matplotlib
-  - seaborn
-- For the Colab version: access to `google.colab` for file uploads
+- Python 3.9+
 
-## Installation
+```text
+pandas
+numpy
+scikit-learn>=1.3
+scipy
+matplotlib
+seaborn
+joblib
+```
 
-1. Clone the repository:
+Install with:
 
-   ```bash
-   git clone https://github.com/runciter2078/Classification_DecisionTree.git
-   ```
+```bash
+pip install -r requirements.txt
+```
 
-2. *(Optional)* Rename the repository folder to `SPY_DecisionTree_Classifier` for clarity.
+`google.colab` is only required for `spy_decision_tree_classifier.py` when run with the `--colab` flag inside a Google Colab notebook. `pydot`/Graphviz are no longer required.
 
-3. Navigate to the project directory:
+## Data format
 
-   ```bash
-   cd Classification_DecisionTree
-   ```
+Both scripts expect a CSV file with a binary target column named `CLASIFICADOR`.
+
+- `decision_tree_spy.py` uses these feature columns:
+
+```text
+1, 31, 42, 46, 47, 48, 60, 68, 76, 77, 93, 171, 173, 191, 221, 225, 237, FECHA.month
+```
+
+- `spy_decision_tree_classifier.py` uses a full feature set for its first analysis and a reduced subset for its second:
+
+```text
+Full:     2, 42, 45, 48, 68, 75, 88, 139, 171, 179, 187, 218, 221, 223, 231, 237, FECHA.month
+Selected: 45, 75, 171
+```
+
+Adjust the column constants at the top of each script if you use a different dataset.
 
 ## Usage
 
 ### decision_tree_spy.py
 
-1. Place the CSV file `SPYV3.csv` in the project directory.
-2. Run the script:
+```bash
+python decision_tree_spy.py --data-path SPYV3.csv
+```
 
-   ```bash
-   python decision_tree_spy.py
-   ```
+Optional arguments:
 
-### spy_decision_tree_classifier.py (Google Colab)
+```text
+--train-ratio      Proportion of data used for training (default: 0.80)
+--n-iter           RandomizedSearchCV iterations (default: 500)
+--cv-splits        Number of TimeSeriesSplit folds (default: 5)
+--plot-max-depth   Visual depth limit for the tree plot only (default: full tree)
+--random-state     Random seed (default: 8)
+--output-dir       Output directory for artifacts (default: output)
+```
 
-1. Upload your CSV file when prompted.
-2. Run the notebook cells sequentially to perform data exploration, model training, and visualization.
+Generated artifacts (under `output/`):
 
-## Notes
+```text
+decision_tree_model.joblib     Trained model
+best_params.json               Best hyperparameters found
+classification_report.txt      Precision / recall / F1 per class
+confusion_matrix.png           Confusion matrix heatmap
+feature_importance.png         Permutation importance plot
+decision_tree.png              Tree visualization
+```
 
-- **Hyperparameter Search:**  
-  The hyperparameter search in `decision_tree_spy.py` uses a high number of iterations (32768) by default, which may require considerable time. Adjust `n_iter_search` if necessary.
+### spy_decision_tree_classifier.py
 
-- **Optimal Depth Selection:**  
-  The optimal `max_depth` values used in the scripts (e.g., 2 for full features, 4 for selected features) are examples. Use the cross-validation results to choose appropriate values for your dataset.
+Local execution:
+
+```bash
+python spy_decision_tree_classifier.py --data-path SPYV3.csv
+```
+
+Inside Google Colab, with interactive upload:
+
+```bash
+python spy_decision_tree_classifier.py --colab
+```
+
+Optional arguments: `--train-ratio`, `--cv-splits`, `--output-dir` (same defaults as above). Artifacts are saved under `output/` with a `full_` or `selected_` prefix depending on the analysis (e.g. `full_decision_tree.png`, `selected_confusion_matrix.png`), plus a shared `class_distribution.png`.
+
+## Notes and limitations
+
+- Missing values are not imputed automatically.
+- The dataset is not included in this repository.
+- `n_iter=500` in `decision_tree_spy.py` is a practical default; the original script used 32768, which can take a very long time. Increase `--n-iter` if you have the computational budget.
 
 ## License
 
-This project is distributed under the [MIT License](LICENSE)..
+Distributed under the [GNU General Public License v3.0](LICENSE).
